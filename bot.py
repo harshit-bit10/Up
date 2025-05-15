@@ -47,38 +47,39 @@ async def start(client, message: Message):
 
 @app.on_message(filters.photo | filters.document)
 async def upscale(client, message: Message):
-    if message.photo:
-        # Download photo - returns file path
-        image_path = await message.photo.download(file_name=os.path.join(TEMP_DIR, f"{message.id}_input.jpg"))
-    elif message.document:
-        # Check if the document is an image
-        if not is_image(message.document.file_name):
-            await message.reply("❌ Only image documents are supported.")
-            return
-        image_path = await message.document.download(file_name=os.path.join(TEMP_DIR, f"{message.id}_input.jpg"))
-    else:
-        await message.reply("❌ Please send a photo or image document.")
-        return
-
-    output_path = os.path.join(TEMP_DIR, f"{message.id}_upscaled.jpg")
-
     try:
+        if message.photo:
+            # Download photo - returns file path
+            image_path = await client.download_media(message.photo.file_id, file_name=os.path.join(TEMP_DIR, f"{message.id}_input.jpg"))
+        elif message.document:
+            # Check if the document is an image
+            if not is_image(message.document.file_name):
+                await message.reply("❌ Only image documents are supported.")
+                return
+            image_path = await client.download_media(message.document.file_id, file_name=os.path.join(TEMP_DIR, f"{message.id}_input.jpg"))
+        else:
+            await message.reply("❌ Please send a photo or image document.")
+            return
+
+        output_path = os.path.join(TEMP_DIR, f"{message.id}_upscaled.jpg")
+
         # Read image with OpenCV
         img = cv2.imread(image_path, cv2.IMREAD_COLOR)
         if img is None:
-            await message.reply("❌ Could not read the image.")
-            os.remove(image_path)
+            await message.reply("❌ Could not read the image. Please ensure the file is a valid image.")
             return
 
+        # Upscale the image
         output, _ = upsampler.enhance(img, outscale=4)
         cv2.imwrite(output_path, output)
 
         await message.reply_photo(photo=output_path, caption="✅ Upscaled using Real-ESRGAN.")
 
     except Exception as e:
-        await message.reply(f"❌ Error: {e}")
+        await message.reply(f"❌ An error occurred: {str(e)}")
 
     finally:
+        # Clean up temporary files
         if os.path.exists(image_path):
             os.remove(image_path)
         if os.path.exists(output_path):
