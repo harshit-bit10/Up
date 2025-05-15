@@ -1,0 +1,7 @@
+pyrogram
+tgcrypto
+torch
+torchvision
+realesrgan
+opencv-python
+Pillow
