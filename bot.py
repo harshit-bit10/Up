@@ -1,17 +1,4 @@
-# import os
-
-
-# ========== CONFIG ==========
-# Configuration
-
-# WEIGHTS_PATH = "models/RealESRGAN_x4plus.pth"
-
-
-
-
-
-
-#import os
+import os
 import torch
 import numpy as np
 from PIL import Image
@@ -60,25 +47,27 @@ async def start(client, message: Message):
 
 @app.on_message(filters.photo | filters.document)
 async def upscale(client, message: Message):
-    media = message.photo or message.document
-    if not media:
-        await message.reply("❌ This is not a valid image.")
+    if message.photo:
+        # Download photo - returns file path
+        image_path = await message.photo.download(file_name=os.path.join(TEMP_DIR, f"{message.id}_input.jpg"))
+    elif message.document:
+        # Check if the document is an image
+        if not is_image(message.document.file_name):
+            await message.reply("❌ Only image documents are supported.")
+            return
+        image_path = await message.document.download(file_name=os.path.join(TEMP_DIR, f"{message.id}_input.jpg"))
+    else:
+        await message.reply("❌ Please send a photo or image document.")
         return
 
-    image_path = os.path.join(TEMP_DIR, f"{message.id}_input.jpg")
     output_path = os.path.join(TEMP_DIR, f"{message.id}_upscaled.jpg")
 
     try:
-        downloaded = await media.download(file_name=image_path)
-        if not is_image(downloaded):
-            await message.reply("❌ Only image files are supported.")
-            os.remove(downloaded)
-            return
-
         # Read image with OpenCV
-        img = cv2.imread(downloaded, cv2.IMREAD_COLOR)
+        img = cv2.imread(image_path, cv2.IMREAD_COLOR)
         if img is None:
-            await message.reply("❌ Could not read image.")
+            await message.reply("❌ Could not read the image.")
+            os.remove(image_path)
             return
 
         output, _ = upsampler.enhance(img, outscale=4)
@@ -95,5 +84,5 @@ async def upscale(client, message: Message):
         if os.path.exists(output_path):
             os.remove(output_path)
 
-# Run
+# Run the bot
 app.run()
