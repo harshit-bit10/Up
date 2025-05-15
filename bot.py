@@ -14,7 +14,7 @@ API_ID = 16501053  # Replace with your own
 API_HASH = "d8c9b01c863dabacc484c2c06cdd0f6e"
 BOT_TOKEN = "7038431984:AAG5FNQMVcKm_lQv_ebQ0VVtyRU5IeCvCRM"
 METADATA_CREDIT = "SharkToonsIndia"
-WEIGHTS_PATH = "RealESRGAN_x4.pth"
+WEIGHTS_PATH = "models/RealESRGAN_x4plus.pth"
 
 # ========== INIT ==========
 bot = Client("upscaler_bot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
