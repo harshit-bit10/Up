@@ -1,54 +1,21 @@
-Here's a complete, well-structured Python Telegram bot using Pyrogram that performs real image upscaling using the Real-ESRGAN model. It processes images, sends real-time updates, and returns the final upscaled image with metadata.
-
-✅ FEATURES:
-/start command.
-
-Accepts image uploads.
-
-Sends progress updates (uploading → processing → done).
-
-Uses Real-ESRGAN for upscaling (via realesrgan).
-
-Adds metadata: Processed by SharkToonsIndia.
-
-✅ REQUIREMENTS:
-Install dependencies:
+✅ Requirements
+Install these packages:
 
 bash
 Copy
 Edit
-pip install pyrogram tgcrypto pillow realesrgan
-Also install Real-ESRGAN if not installed via pip:
+pip install pyrogram tgcrypto torch torchvision numpy realesrgan opencv-python
+Also download the Real-ESRGAN model (x4 scale):
 
 bash
 Copy
 Edit
-pip install realesrgan
-If this fails, use:
+mkdir models
+wget https://github.com/xinntao/Real-ESRGAN/releases/download/v0.1.0/RealESRGAN_x4plus.pth -O models/RealESRGAN_x4plus.pth
+✅ bot.py (Pyrogram Real-ESRGAN Bot)
+📝 Notes:
+Replace API_ID, API_HASH, and BOT_TOKEN with your actual values from https://my.telegram.org.
 
-bash
-Copy
-Edit
-pip install git+https://github.com/xinntao/Real-ESRGAN
+This script uses RRDBNet with the RealESRGAN x4 model.
 
-🧠 NOTES:
-Model file RealESRGAN_x4.pth must be in the script's directory. You can download it from:
-https://github.com/xinntao/Real-ESRGAN/blob/master/weights/RealESRGAN_x4.pth
-
-Bot supports both CPU and GPU (CUDA).
-
-Metadata is embedded using PIL's PngInfo.
-
-🔐 Example Metadata on final image:
-text
-Copy
-Edit
-Comment: Upscaled by SharkToonsIndia
-Would you like this bot to support videos or other formats too in future updates?
-
-
-
-
-
-
-
+Metadata (SharkToonsIndia) is added in the caption. If you want actual image metadata embedded, let me know—I can use PIL’s PngInfo.
