@@ -43,7 +43,12 @@ async def upscale(_, msg: Message):
     image_path = f"{msg.from_user.id}_input.jpg"
     output_path = f"{msg.from_user.id}_upscaled.png"
 
-    await msg.download(image_path)
+    photo = msg.photo
+    if not photo:
+        await sent.edit("❌ No photo found.")
+        return
+
+    await photo.download(file_name=image_path)
 
     if not os.path.exists(image_path):
         await sent.edit("❌ Failed to download the image. Try again.")
@@ -51,7 +56,7 @@ async def upscale(_, msg: Message):
 
     img = cv2.imread(image_path, cv2.IMREAD_COLOR)
     if img is None:
-        await sent.edit("❌ Failed to read the image. The file may be corrupted or unsupported.")
+        await sent.edit("❌ Failed to read the image. The file may be corrupted.")
         return
 
     img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
@@ -63,11 +68,9 @@ async def upscale(_, msg: Message):
         upscaled_img = Image.fromarray(output)
         upscaled_img.save(output_path)
 
-        await sent.edit("✅ Upscaling complete! Uploading...")
-
         await msg.reply_photo(
             output_path,
-            caption="✨ Here is your upscaled image by *SharkToonsIndia*."
+            caption="✅ Upscaled by *SharkToonsIndia*"
         )
 
     except Exception as e:
@@ -77,6 +80,7 @@ async def upscale(_, msg: Message):
         if os.path.exists(image_path): os.remove(image_path)
         if os.path.exists(output_path): os.remove(output_path)
         await sent.delete()
+
 
 
 bot.run()
