@@ -1,98 +1,82 @@
-import os
-import torch
-import cv2
-from pyrogram import Client, filters
-from pyrogram.types import Message
-from PIL import Image
-from realesrgan import RealESRGAN
-from datetime import datetime
-from io import BytesIO
+# import os
+
 
 # ========== CONFIG ==========
 # Configuration
+
+# WEIGHTS_PATH = "models/RealESRGAN_x4plus.pth"
+
+
+import os
+import torch
+from pyrogram import Client, filters
+from pyrogram.types import Message
+from PIL import Image
+import cv2
+from realesrgan import RealESRGAN
+
+# Setup
 API_ID = 16501053  # Replace with your own
 API_HASH = "d8c9b01c863dabacc484c2c06cdd0f6e"
 BOT_TOKEN = "7038431984:AAG5FNQMVcKm_lQv_ebQ0VVtyRU5IeCvCRM"
 METADATA_CREDIT = "SharkToonsIndia"
-WEIGHTS_PATH = "models/RealESRGAN_x4plus.pth"
 
-# ========== INIT ==========
-bot = Client("upscaler_bot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
+# Paths
+MODEL_PATH = "models/RealESRGAN_x4plus.pth"
+TEMP_DIR = "temp"
+os.makedirs(TEMP_DIR, exist_ok=True)
+
+# Init bot and model
+app = Client("upscaler_bot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model = RealESRGAN(device, scale=4)
-model.load_weights(WEIGHTS_PATH)
+model.load_weights(MODEL_PATH)
 
-# ========== UTILS ==========
-def add_metadata(image_path: str, credit: str) -> str:
-    img = Image.open(image_path)
-    metadata = img.info
-    metadata["Author"] = credit
-    output_path = image_path.replace(".png", "_meta.png")
-    img.save(output_path, pnginfo=Image.PngImagePlugin.PngInfo(metadata))
-    return output_path
+# Helper: Check file is an image
+def is_image(file_path):
+    ext = file_path.lower().split(".")[-1]
+    return ext in ["jpg", "jpeg", "png", "bmp", "webp"]
 
-def is_valid_image(mime: str) -> bool:
-    return mime.startswith("image/")
+@app.on_message(filters.command("start"))
+async def start(_, message: Message):
+    await message.reply("👋 Send me an image (photo or image document) to upscale it using Real-ESRGAN.")
 
-# ========== HANDLERS ==========
-@bot.on_message(filters.command("start"))
-async def start(_, msg: Message):
-    await msg.reply("👋 Welcome to the Real-ESRGAN Upscaler Bot!\nSend an image (as photo or document) to upscale.\n\nMetadata will include: SharkToonsIndia")
-
-@bot.on_message(filters.photo | filters.document)
-async def upscale_image(_, msg: Message):
-    file = msg.photo or msg.document
-    mime = file.mime_type if hasattr(file, "mime_type") else None
-
-    if not is_valid_image(mime):
-        await msg.reply("❌ Only image files are supported. Please send a valid photo or image document.")
+@app.on_message(filters.photo | filters.document)
+async def upscale_image(client, message: Message):
+    media = message.photo or message.document
+    if not media:
+        await message.reply("❌ This isn't an image file.")
         return
 
-    await msg.reply("📥 Downloading image...")
+    # Generate paths
+    input_path = os.path.join(TEMP_DIR, f"{message.id}_input.jpg")
+    output_path = os.path.join(TEMP_DIR, f"{message.id}_upscaled.jpg")
 
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    input_path = f"input_{timestamp}.png"
-    output_path = f"output_{timestamp}.png"
-
-    # Download image
-    await msg.download(file_name=input_path)
-
-    # Read image
     try:
-        img = cv2.imread(input_path)
-        if img is None:
-            raise ValueError("Image is empty or unreadable.")
-        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        # Download and validate image
+        downloaded = await media.download(file_name=input_path)
+        if not is_image(downloaded):
+            await message.reply("❌ Only image files (JPG, PNG, etc.) are supported.")
+            os.remove(downloaded)
+            return
+
+        # Read and upscale
+        img = Image.open(downloaded).convert("RGB")
+        upscaled_img = model.predict(img)
+
+        # Save with metadata
+        upscaled_img.save(output_path, quality=95)
+        await message.reply_photo(photo=output_path, caption="✅ Upscaled using Real-ESRGAN.")
+    
     except Exception as e:
-        await msg.reply(f"❌ Failed to read image. Error: {e}")
-        return
+        await message.reply(f"❌ Failed to process image.\n\nError: `{e}`")
+    
+    finally:
+        # Cleanup
+        if os.path.exists(input_path):
+            os.remove(input_path)
+        if os.path.exists(output_path):
+            os.remove(output_path)
 
-    await msg.reply("🧠 Upscaling in progress...")
-
-    # Upscale
-    try:
-        upscaled = model.predict(img)
-        upscaled = cv2.cvtColor(upscaled, cv2.COLOR_RGB2BGR)
-        cv2.imwrite(output_path, upscaled)
-    except Exception as e:
-        await msg.reply(f"❌ Failed during upscaling. Error: {e}")
-        return
-
-    # Add metadata
-    try:
-        final_path = add_metadata(output_path, CREDIT_NAME)
-    except Exception:
-        final_path = output_path  # fallback if metadata fails
-
-    await msg.reply("✅ Upscaling complete. Sending image...")
-
-    await msg.reply_document(final_path, caption=f"Upscaled by SharkToonsIndia")
-
-    # Clean up
-    for path in [input_path, output_path, final_path]:
-        if os.path.exists(path):
-            os.remove(path)
-
-# ========== START BOT ==========
-print("🤖 Bot is running...")
-bot.run()
+# Run bot
+app.run()
