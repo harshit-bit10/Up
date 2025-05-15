@@ -35,3 +35,13 @@ python
 Copy
 Edit
 WEIGHTS_PATH = "models/RealESRGAN_x4plus.pth"
+
+
+
+
+# Install basicsr first
+pip install git+https://github.com/xinntao/BasicSR.git
+
+# Install realesrgan from official repo
+pip install git+https://github.com/xinntao/Real-ESRGAN.git
+
