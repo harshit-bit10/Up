@@ -7,13 +7,20 @@
 # WEIGHTS_PATH = "models/RealESRGAN_x4plus.pth"
 
 
-import os
+
+
+
+
+#import os
 import torch
+import numpy as np
+from PIL import Image
 from pyrogram import Client, filters
 from pyrogram.types import Message
-from PIL import Image
 import cv2
-from realesrgan import RealESRGAN
+
+from realesrgan import RealESRGANer
+from basicsr.archs.rrdbnet_arch import RRDBNet
 
 # Setup
 API_ID = 16501053  # Replace with your own
@@ -21,62 +28,72 @@ API_HASH = "d8c9b01c863dabacc484c2c06cdd0f6e"
 BOT_TOKEN = "7038431984:AAG5FNQMVcKm_lQv_ebQ0VVtyRU5IeCvCRM"
 METADATA_CREDIT = "SharkToonsIndia"
 
-# Paths
-MODEL_PATH = "models/RealESRGAN_x4plus.pth"
+# File paths
 TEMP_DIR = "temp"
+MODEL_PATH = "RealESRGAN_x4plus.pth"
 os.makedirs(TEMP_DIR, exist_ok=True)
 
-# Init bot and model
-app = Client("upscaler_bot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
+# Load model
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-model = RealESRGAN(device, scale=4)
-model.load_weights(MODEL_PATH)
+model = RRDBNet(num_in_ch=3, num_out_ch=3, num_feat=64, num_block=23, num_grow_ch=32, scale=4)
+upsampler = RealESRGANer(
+    scale=4,
+    model_path=MODEL_PATH,
+    model=model,
+    tile=0,
+    tile_pad=10,
+    pre_pad=0,
+    half=True if torch.cuda.is_available() else False,
+    device=device
+)
 
-# Helper: Check file is an image
-def is_image(file_path):
-    ext = file_path.lower().split(".")[-1]
-    return ext in ["jpg", "jpeg", "png", "bmp", "webp"]
+# Start bot
+app = Client("upscaler_bot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
+
+# Helper: Check image file
+def is_image(path):
+    return any(path.lower().endswith(ext) for ext in [".jpg", ".jpeg", ".png", ".bmp", ".webp"])
 
 @app.on_message(filters.command("start"))
-async def start(_, message: Message):
-    await message.reply("👋 Send me an image (photo or image document) to upscale it using Real-ESRGAN.")
+async def start(client, message: Message):
+    await message.reply("👋 Send an image (as photo or image document) to upscale it using Real-ESRGAN.")
 
 @app.on_message(filters.photo | filters.document)
-async def upscale_image(client, message: Message):
+async def upscale(client, message: Message):
     media = message.photo or message.document
     if not media:
-        await message.reply("❌ This isn't an image file.")
+        await message.reply("❌ This is not a valid image.")
         return
 
-    # Generate paths
-    input_path = os.path.join(TEMP_DIR, f"{message.id}_input.jpg")
+    image_path = os.path.join(TEMP_DIR, f"{message.id}_input.jpg")
     output_path = os.path.join(TEMP_DIR, f"{message.id}_upscaled.jpg")
 
     try:
-        # Download and validate image
-        downloaded = await media.download(file_name=input_path)
+        downloaded = await media.download(file_name=image_path)
         if not is_image(downloaded):
-            await message.reply("❌ Only image files (JPG, PNG, etc.) are supported.")
+            await message.reply("❌ Only image files are supported.")
             os.remove(downloaded)
             return
 
-        # Read and upscale
-        img = Image.open(downloaded).convert("RGB")
-        upscaled_img = model.predict(img)
+        # Read image with OpenCV
+        img = cv2.imread(downloaded, cv2.IMREAD_COLOR)
+        if img is None:
+            await message.reply("❌ Could not read image.")
+            return
 
-        # Save with metadata
-        upscaled_img.save(output_path, quality=95)
+        output, _ = upsampler.enhance(img, outscale=4)
+        cv2.imwrite(output_path, output)
+
         await message.reply_photo(photo=output_path, caption="✅ Upscaled using Real-ESRGAN.")
-    
+
     except Exception as e:
-        await message.reply(f"❌ Failed to process image.\n\nError: `{e}`")
-    
+        await message.reply(f"❌ Error: {e}")
+
     finally:
-        # Cleanup
-        if os.path.exists(input_path):
-            os.remove(input_path)
+        if os.path.exists(image_path):
+            os.remove(image_path)
         if os.path.exists(output_path):
             os.remove(output_path)
 
-# Run bot
+# Run
 app.run()
