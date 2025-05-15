@@ -44,15 +44,24 @@ async def upscale(_, msg: Message):
     output_path = f"{msg.from_user.id}_upscaled.png"
 
     await msg.download(image_path)
-    await sent.edit("📈 Upscaling image...")
+
+    if not os.path.exists(image_path):
+        await sent.edit("❌ Failed to download the image. Try again.")
+        return
 
     img = cv2.imread(image_path, cv2.IMREAD_COLOR)
+    if img is None:
+        await sent.edit("❌ Failed to read the image. The file may be corrupted or unsupported.")
+        return
+
     img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+
+    await sent.edit("📈 Upscaling image...")
 
     try:
         output, _ = upscaler.enhance(img, outscale=4)
         upscaled_img = Image.fromarray(output)
-        upscaled_img.save(output_path, pnginfo=None)
+        upscaled_img.save(output_path)
 
         await sent.edit("✅ Upscaling complete! Uploading...")
 
@@ -62,11 +71,12 @@ async def upscale(_, msg: Message):
         )
 
     except Exception as e:
-        await sent.edit(f"❌ Error: {str(e)}")
+        await sent.edit(f"❌ Error during upscaling: {str(e)}")
 
     finally:
         if os.path.exists(image_path): os.remove(image_path)
         if os.path.exists(output_path): os.remove(output_path)
         await sent.delete()
+
 
 bot.run()
