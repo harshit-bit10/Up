@@ -1,3 +1,9 @@
+mkdir -p models
+wget https://github.com/xinntao/Real-ESRGAN/releases/download/v0.1.0/RealESRGAN_x4plus.pth -O RealESRGAN_x4plus.pth
+
+
+
+
 ✅ Requirements
 Install these packages:
 
