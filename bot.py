@@ -12,7 +12,7 @@ from basicsr.archs.rrdbnet_arch import RRDBNet
 # Setup
 API_ID = 16501053  # Replace with your own
 API_HASH = "d8c9b01c863dabacc484c2c06cdd0f6e"
-BOT_TOKEN = "7038431984:AAG5FNQMVcKm_lQv_ebQ0VVtyRU5IeCvCRM"
+BOT_TOKEN = "7038431984:AAH3ILpM8u88WtIb_CsLCrL8Z0_Y3z-_7nU"
 METADATA_CREDIT = "SharkToonsIndia"
 
 # File paths
