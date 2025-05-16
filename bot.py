@@ -12,7 +12,7 @@ from basicsr.archs.rrdbnet_arch import RRDBNet
 # Setup
 API_ID = 16501053  # Replace with your own
 API_HASH = "d8c9b01c863dabacc484c2c06cdd0f6e"
-BOT_TOKEN = "7038431984:AAH3ILpM8u88WtIb_CsLCrL8Z0_Y3z-_7nU"
+BOT_TOKEN = "7038431984:AAFnFttAC4gN1I2-ISw0UE8kC_4Ya9mHKsQ"
 METADATA_CREDIT = "SharkToonsIndia"
 
 # File paths
@@ -27,7 +27,7 @@ upsampler = RealESRGANer(
     scale=4,
     model_path=MODEL_PATH,
     model=model,
-    tile=32,
+    tile=512,
     tile_pad=10,
     pre_pad=0,
     half=True if torch.cuda.is_available() else False,
